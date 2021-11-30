@@ -1,5 +1,7 @@
 import argparse
 import core.encrypt_decrypt as crypto
+import sys
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -12,3 +14,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
     crypto.encrypt()
+    sys.exit(1)
