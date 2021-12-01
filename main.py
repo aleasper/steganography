@@ -1,6 +1,31 @@
 import argparse
 import core.encrypt_decrypt as crypto
 import sys
+import os
+
+from consts.consts import WAV_INFO_BYTES, ENCODING_BITS
+
+
+def get_available_size(wav_data_len, degree):
+    return wav_data_len * degree / 16
+
+
+def create_masks(degree):
+    """
+    Create masks for taking bits from text bytes and
+    putting them to image bytes.
+    :param degree: number of bits from byte that are taken to encode text data in audio
+    :return:  mask for a text and a mask for a sample
+    """
+    text_mask = 0b1111111111111111
+    sample_mask = 0b1111111111111111
+
+    text_mask <<= (16 - degree)
+    text_mask %= 65536
+    sample_mask >>= degree
+    sample_mask <<= degree
+
+    return text_mask, sample_mask
 
 
 if __name__ == '__main__':
@@ -12,6 +37,123 @@ if __name__ == '__main__':
     parser.add_argument("output", type=str,
                         help="output file")
     args = parser.parse_args()
-    print(args)
-    crypto.encrypt()
-    sys.exit(1)
+
+    input_file_path = args.input
+    text_file_path = args.text_file
+    output_file_path = args.output
+
+
+    src_file = open(input_file_path, 'rb')
+    dst_file = open(output_file_path, 'wb')
+    text = open(text_file_path, 'r')
+    text_len = os.stat(text_file_path).st_size
+
+    wav_info = src_file.read(WAV_INFO_BYTES)
+    wav_data_len = int.from_bytes(wav_info[40:44], byteorder='little')
+
+    available_size = get_available_size(wav_data_len, ENCODING_BITS)
+    if text_len > available_size:
+        print("Source file is too small to encode this text")
+        sys.exit(1)
+
+    dst_file.write(wav_info)
+
+    wav_data = src_file.read(wav_data_len)
+
+    text_mask, sample_mask = create_masks(ENCODING_BITS)
+
+    end_symbol_added = False
+
+    while True:
+        txt_symbol = text.read(1)
+
+        # text is ended
+        if not txt_symbol:
+            if not end_symbol_added:
+                end_symbol_added = True
+                txt_symbol = '~'
+            else:
+                break
+
+        txt_symbol = ord(txt_symbol)  # from char to ASCII integer
+        txt_symbol <<= 8
+
+        for step in range(0, 16, ENCODING_BITS):
+            if step == 8 and not txt_symbol:
+                break
+
+            sample = int.from_bytes(wav_data[:2], byteorder='little') & sample_mask
+            wav_data = wav_data[2:]
+
+            bits = txt_symbol & text_mask
+            bits >>= (16 - ENCODING_BITS)
+
+            sample |= bits
+
+            dst_file.write(sample.to_bytes(2, byteorder='little'))
+            txt_symbol = (txt_symbol << ENCODING_BITS) % 65536
+
+
+    dst_file.write(wav_data)
+    dst_file.write(src_file.read())
+
+    text.close()
+    src_file.close()
+    dst_file.close()
+
+    ''' DECODE '''
+
+    input_wav = open(output_file_path, 'rb')
+
+    wav_header = input_wav.read(WAV_INFO_BYTES)
+    data_size = int.from_bytes(wav_header[40:44], byteorder='little')
+
+    _, sample_mask = create_masks(ENCODING_BITS)
+    sample_mask = ~sample_mask
+
+    data = input_wav.read(data_size)
+
+    decoded_text = ''
+
+    read = 0
+
+    end_symbol_read = False
+
+    while not end_symbol_read:
+        two_symbols = 0
+        for step in range(0, 16, ENCODING_BITS):
+            sample = int.from_bytes(data[:2], byteorder='little') & sample_mask
+            data = data[2:]
+
+            two_symbols <<= ENCODING_BITS
+            two_symbols |= sample
+
+        first_symbol = two_symbols >> 8
+
+        symbol = chr(first_symbol)
+        if symbol == '~':
+            end_symbol_read = True
+        else:
+            decoded_text += symbol
+        read += 1
+
+        if chr(first_symbol) == '\n' and len(os.linesep) == 2:
+            read += 1
+
+        if data_size - read > 0 and not end_symbol_read:
+            second_symbol = two_symbols & 0b0000000011111111
+            symbol = (chr(second_symbol))
+            if symbol == '~':
+                end_symbol_read = True
+            else:
+                decoded_text += symbol
+            read += 1
+
+            if chr(second_symbol) == '\n' and len(os.linesep) == 2:
+                read += 1
+
+    print(decoded_text)
+    text.close()
+    input_wav.close()
+
+    sys.exit(0)
