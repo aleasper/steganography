@@ -18,6 +18,9 @@ namespace steganography_ui
 
         string file;
         string txtFile;
+        string encodedFile;
+        string toDecodeFile;
+        string decodedText;
 
         public Form1()
         {
@@ -26,7 +29,9 @@ namespace steganography_ui
 
         private void button1_Click(object sender, EventArgs e)
         {
- 
+            /*
+             * ENCODE
+             */
             string workingDirectory = Environment.CurrentDirectory;
             string projectDirectory = workingDirectory;
 
@@ -34,9 +39,10 @@ namespace steganography_ui
             Console.WriteLine(projectDirectory);
             ProcessStartInfo start = new ProcessStartInfo();
             start.FileName = string.Format("{0}\\venv\\Scripts\\python.exe", projectDirectory);
-            start.Arguments = string.Format(
-                "{0} {1}", string.Format("{0}\\main.py", projectDirectory),
-                this.file + " " + txtFile + " " + "ouput.wav"
+            start.Arguments = string.Format("{0}\\main.py", projectDirectory) +
+                string.Format(
+                    " --input {0} --output {1} --text_file {2} --encode",
+                    this.file, this.encodedFile, this.txtFile
                 );
             start.UseShellExecute = false;
             start.RedirectStandardOutput = true;
@@ -46,7 +52,6 @@ namespace steganography_ui
                 {
                     string result = reader.ReadToEnd();
                     Console.Write(result);
-
                 }
                 Console.Write(process.ExitCode);
             }
@@ -63,11 +68,12 @@ namespace steganography_ui
                 this.file = openFileDialog1.FileName;
                 try
                 {
-                    string text = File.ReadAllText(file);
+                    string text = File.ReadAllText(this.file);
                     size = text.Length;
                 }
-                catch (IOException)
+                catch (IOException ex)
                 {
+                    Console.WriteLine(ex.Message);
                 }
             }
             Console.WriteLine(size); // <-- Shows file size in debugging mode.
@@ -93,12 +99,105 @@ namespace steganography_ui
                     string text = File.ReadAllText(file);
                     size = text.Length;
                 }
-                catch (IOException)
+                catch (IOException ex)
                 {
+                    Console.WriteLine(ex.Message);
                 }
             }
             Console.WriteLine(size); // <-- Shows file size in debugging mode.
             Console.WriteLine(result); // <-- For debugging use.
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void tabPage1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+            saveFileDialog1.Filter = "Audio files |*.wav";
+            saveFileDialog1.Title = "Выберите куда сохранить файл";
+            saveFileDialog1.ShowDialog();
+
+            this.encodedFile = saveFileDialog1.FileName;
+        }
+
+        private void label8_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void tabPage2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int size = -1;
+                OpenFileDialog openFileDialog1 = new OpenFileDialog();
+                openFileDialog1.Filter = "Audio files | *.wav";
+                DialogResult result = openFileDialog1.ShowDialog(); // Show the dialog.
+                if (result == DialogResult.OK) // Test result.
+                {
+                    this.toDecodeFile = openFileDialog1.FileName;
+                }
+                Console.WriteLine(size); // <-- Shows file size in debugging mode.
+                Console.WriteLine(result); // <-- For debugging use.
+            } catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+            saveFileDialog1.Filter = "Text files |*.txt";
+            saveFileDialog1.Title = "Выберите куда сохранить файл";
+            saveFileDialog1.ShowDialog();
+
+            this.decodedText = saveFileDialog1.FileName;
+            Console.WriteLine(this.decodedText);
+        }
+
+        private void button8_Click(object sender, EventArgs e)
+        {
+            /*
+            * DECODE
+            */
+            string workingDirectory = Environment.CurrentDirectory;
+            string projectDirectory = workingDirectory;
+
+
+            Console.WriteLine(projectDirectory);
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.FileName = string.Format("{0}\\venv\\Scripts\\python.exe", projectDirectory);
+            start.Arguments = string.Format("{0}\\main.py", projectDirectory) +
+                string.Format(
+                    " --input {0} --text_file {1}",
+                    this.toDecodeFile, this.decodedText
+                );
+            Console.WriteLine(start.Arguments);
+            start.UseShellExecute = false;
+            start.RedirectStandardOutput = true;
+            using (Process process = Process.Start(start))
+            {
+                using (StreamReader reader = process.StandardOutput)
+                {
+                    string result = reader.ReadToEnd();
+                    Console.Write(result);
+                }
+                Console.Write(process.ExitCode);
+            }
         }
     }
 }

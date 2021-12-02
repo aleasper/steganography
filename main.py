@@ -30,130 +30,135 @@ def create_masks(degree):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", type=str,
+    parser.add_argument("--input", type=str,
                         help="input file")
-    parser.add_argument("text_file", type=str,
+    parser.add_argument("--text_file", type=str,
                         help="file with text to steganography")
-    parser.add_argument("output", type=str,
-                        help="output file")
+    parser.add_argument("--output", type=str,
+                        help="output file", nargs='?', default=None)
+    parser.add_argument('--encode', dest='encode', action='store_true')
     args = parser.parse_args()
-
+    print(args)
     input_file_path = args.input
     text_file_path = args.text_file
-    output_file_path = args.output
-
 
     src_file = open(input_file_path, 'rb')
-    dst_file = open(output_file_path, 'wb')
-    text = open(text_file_path, 'r')
-    text_len = os.stat(text_file_path).st_size
-
-    wav_info = src_file.read(WAV_INFO_BYTES)
-    wav_data_len = int.from_bytes(wav_info[40:44], byteorder='little')
-
-    available_size = get_available_size(wav_data_len, ENCODING_BITS)
-    if text_len > available_size:
-        print("Source file is too small to encode this text")
-        sys.exit(1)
-
-    dst_file.write(wav_info)
-
-    wav_data = src_file.read(wav_data_len)
-
-    text_mask, sample_mask = create_masks(ENCODING_BITS)
-
-    end_symbol_added = False
-
-    while True:
-        txt_symbol = text.read(1)
-
-        # text is ended
-        if not txt_symbol:
-            if not end_symbol_added:
-                end_symbol_added = True
-                txt_symbol = '~'
-            else:
-                break
-
-        txt_symbol = ord(txt_symbol)  # from char to ASCII integer
-        txt_symbol <<= 8
-
-        for step in range(0, 16, ENCODING_BITS):
-            if step == 8 and not txt_symbol:
-                break
-
-            sample = int.from_bytes(wav_data[:2], byteorder='little') & sample_mask
-            wav_data = wav_data[2:]
-
-            bits = txt_symbol & text_mask
-            bits >>= (16 - ENCODING_BITS)
-
-            sample |= bits
-
-            dst_file.write(sample.to_bytes(2, byteorder='little'))
-            txt_symbol = (txt_symbol << ENCODING_BITS) % 65536
 
 
-    dst_file.write(wav_data)
-    dst_file.write(src_file.read())
+    if args.encode:
+        text_file_path = args.text_file
+        output_file_path = args.output
+        dst_file = open(output_file_path, 'wb')
+        text = open(text_file_path, 'r')
+        text_len = os.stat(text_file_path).st_size
 
-    text.close()
-    src_file.close()
-    dst_file.close()
+        wav_info = src_file.read(WAV_INFO_BYTES)
+        wav_data_len = int.from_bytes(wav_info[40:44], byteorder='little')
 
-    ''' DECODE '''
+        available_size = get_available_size(wav_data_len, ENCODING_BITS)
+        if text_len > available_size:
+            print("Source file is too small to encode this text")
+            sys.exit(1)
 
-    input_wav = open(output_file_path, 'rb')
+        dst_file.write(wav_info)
 
-    wav_header = input_wav.read(WAV_INFO_BYTES)
-    data_size = int.from_bytes(wav_header[40:44], byteorder='little')
+        wav_data = src_file.read(wav_data_len)
 
-    _, sample_mask = create_masks(ENCODING_BITS)
-    sample_mask = ~sample_mask
+        text_mask, sample_mask = create_masks(ENCODING_BITS)
 
-    data = input_wav.read(data_size)
+        end_symbol_added = False
 
-    decoded_text = ''
+        while True:
+            txt_symbol = text.read(1)
 
-    read = 0
+            # text is ended
+            if not txt_symbol:
+                if not end_symbol_added:
+                    end_symbol_added = True
+                    txt_symbol = '~'
+                else:
+                    break
 
-    end_symbol_read = False
+            txt_symbol = ord(txt_symbol)  # from char to ASCII integer
+            txt_symbol <<= 8
 
-    while not end_symbol_read:
-        two_symbols = 0
-        for step in range(0, 16, ENCODING_BITS):
-            sample = int.from_bytes(data[:2], byteorder='little') & sample_mask
-            data = data[2:]
+            for step in range(0, 16, ENCODING_BITS):
+                if step == 8 and not txt_symbol:
+                    break
 
-            two_symbols <<= ENCODING_BITS
-            two_symbols |= sample
+                sample = int.from_bytes(wav_data[:2], byteorder='little') & sample_mask
+                wav_data = wav_data[2:]
 
-        first_symbol = two_symbols >> 8
+                bits = txt_symbol & text_mask
+                bits >>= (16 - ENCODING_BITS)
 
-        symbol = chr(first_symbol)
-        if symbol == '~':
-            end_symbol_read = True
-        else:
-            decoded_text += symbol
-        read += 1
+                sample |= bits
 
-        if chr(first_symbol) == '\n' and len(os.linesep) == 2:
-            read += 1
+                dst_file.write(sample.to_bytes(2, byteorder='little'))
+                txt_symbol = (txt_symbol << ENCODING_BITS) % 65536
 
-        if data_size - read > 0 and not end_symbol_read:
-            second_symbol = two_symbols & 0b0000000011111111
-            symbol = (chr(second_symbol))
+
+        dst_file.write(wav_data)
+        dst_file.write(src_file.read())
+
+        text.close()
+        src_file.close()
+        dst_file.close()
+    else:
+
+        ''' DECODE '''
+
+        input_wav = open(input_file_path, 'rb')
+        text = open(text_file_path, 'w')
+
+        wav_header = input_wav.read(WAV_INFO_BYTES)
+        data_size = int.from_bytes(wav_header[40:44], byteorder='little')
+
+        _, sample_mask = create_masks(ENCODING_BITS)
+        sample_mask = ~sample_mask
+
+        data = input_wav.read(data_size)
+
+        decoded_text = ''
+
+        read = 0
+
+        end_symbol_read = False
+
+        while not end_symbol_read:
+            two_symbols = 0
+            for step in range(0, 16, ENCODING_BITS):
+                sample = int.from_bytes(data[:2], byteorder='little') & sample_mask
+                data = data[2:]
+
+                two_symbols <<= ENCODING_BITS
+                two_symbols |= sample
+
+            first_symbol = two_symbols >> 8
+
+            symbol = chr(first_symbol)
             if symbol == '~':
                 end_symbol_read = True
             else:
                 decoded_text += symbol
             read += 1
 
-            if chr(second_symbol) == '\n' and len(os.linesep) == 2:
+            if chr(first_symbol) == '\n' and len(os.linesep) == 2:
                 read += 1
 
-    print(decoded_text)
-    text.close()
-    input_wav.close()
+            if data_size - read > 0 and not end_symbol_read:
+                second_symbol = two_symbols & 0b0000000011111111
+                symbol = (chr(second_symbol))
+                if symbol == '~':
+                    end_symbol_read = True
+                else:
+                    decoded_text += symbol
+                read += 1
 
+                if chr(second_symbol) == '\n' and len(os.linesep) == 2:
+                    read += 1
+
+        text.write(decoded_text)
+        text.close()
+        input_wav.close()
     sys.exit(0)
