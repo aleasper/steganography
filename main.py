@@ -3,7 +3,7 @@ import core.encrypt_decrypt as crypto
 import sys
 import os
 
-from consts.consts import WAV_INFO_BYTES, ENCODING_BITS
+from consts.consts import WAV_INFO_BYTES
 
 
 def get_available_size(wav_data_len, degree):
@@ -36,12 +36,15 @@ if __name__ == '__main__':
                         help="file with text to steganography")
     parser.add_argument("--output", type=str,
                         help="output file", nargs='?', default=None)
+    parser.add_argument("--degree", type=int,
+                        help="amount of bytes to overwrite", nargs='?', default=2)
     parser.add_argument('--encode', dest='encode', action='store_true')
     args = parser.parse_args()
     print(args)
     input_file_path = args.input
     text_file_path = args.text_file
-
+    ENCODING_BITS = args.degree
+    print(f'using {ENCODING_BITS} bits to overwrite')
     src_file = open(input_file_path, 'rb')
 
 
