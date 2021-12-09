@@ -35,25 +35,43 @@ namespace steganography_ui
             string workingDirectory = Environment.CurrentDirectory;
             string projectDirectory = workingDirectory;
 
+            int degree = (int)this.numericUpDown1.Value;
 
-            Console.WriteLine(projectDirectory);
+            long length = new System.IO.FileInfo(this.file).Length - 54;
+            long textL = new System.IO.FileInfo(this.txtFile).Length;
+            if (length * degree / 16 < textL) {
+                Console.WriteLine("!!!!!!");
+                MessageBox.Show("Слишком длинный текст: попробуйте увеличить кол-во перезаписываемых бит");
+                return;
+            }
+            // wav_data_len * degree / 16
+
+            Console.WriteLine(length);
+
             ProcessStartInfo start = new ProcessStartInfo();
             start.FileName = string.Format("{0}\\venv\\Scripts\\python.exe", projectDirectory);
             start.Arguments = string.Format("{0}\\main.py", projectDirectory) +
                 string.Format(
-                    " --input {0} --output {1} --text_file {2} --encode",
-                    this.file, this.encodedFile, this.txtFile
+                    " --input {0} --output {1} --text_file {2} --degree {3} --encode",
+                    this.file, this.encodedFile, this.txtFile, degree
                 );
+            Console.WriteLine(start.Arguments);
             start.UseShellExecute = false;
             start.RedirectStandardOutput = true;
             using (Process process = Process.Start(start))
             {
-                using (StreamReader reader = process.StandardOutput)
+                try
                 {
-                    string result = reader.ReadToEnd();
-                    Console.Write(result);
+                    using (StreamReader reader = process.StandardOutput)
+                    {
+                        string result = reader.ReadToEnd();
+                        Console.WriteLine("Res: ", result);
+                    }
                 }
-                Console.Write(process.ExitCode);
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             }
         }
 
@@ -76,8 +94,6 @@ namespace steganography_ui
                     Console.WriteLine(ex.Message);
                 }
             }
-            Console.WriteLine(size); // <-- Shows file size in debugging mode.
-            Console.WriteLine(result); // <-- For debugging use.
         }
 
         private void label1_Click(object sender, EventArgs e)
@@ -104,8 +120,6 @@ namespace steganography_ui
                     Console.WriteLine(ex.Message);
                 }
             }
-            Console.WriteLine(size); // <-- Shows file size in debugging mode.
-            Console.WriteLine(result); // <-- For debugging use.
         }
 
         private void label3_Click(object sender, EventArgs e)
@@ -150,8 +164,6 @@ namespace steganography_ui
                 {
                     this.toDecodeFile = openFileDialog1.FileName;
                 }
-                Console.WriteLine(size); // <-- Shows file size in debugging mode.
-                Console.WriteLine(result); // <-- For debugging use.
             } catch (Exception ex)
             {
                 Console.WriteLine(ex);
@@ -177,14 +189,14 @@ namespace steganography_ui
             string workingDirectory = Environment.CurrentDirectory;
             string projectDirectory = workingDirectory;
 
+            int degree = (int)this.numericUpDown2.Value;
 
-            Console.WriteLine(projectDirectory);
             ProcessStartInfo start = new ProcessStartInfo();
             start.FileName = string.Format("{0}\\venv\\Scripts\\python.exe", projectDirectory);
             start.Arguments = string.Format("{0}\\main.py", projectDirectory) +
                 string.Format(
-                    " --input {0} --text_file {1}",
-                    this.toDecodeFile, this.decodedText
+                    " --input {0} --text_file {1} --degree {2}",
+                    this.toDecodeFile, this.decodedText, degree
                 );
             Console.WriteLine(start.Arguments);
             start.UseShellExecute = false;
@@ -194,10 +206,18 @@ namespace steganography_ui
                 using (StreamReader reader = process.StandardOutput)
                 {
                     string result = reader.ReadToEnd();
-                    Console.Write(result);
                 }
-                Console.Write(process.ExitCode);
             }
+        }
+
+        private void label5_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label5_Click_1(object sender, EventArgs e)
+        {
+
         }
     }
 }

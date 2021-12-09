@@ -27,8 +27,9 @@ def create_masks(degree):
 
     return text_mask, sample_mask
 
-
+# --input input.wav --output output1.wav --text_file text.txt
 if __name__ == '__main__':
+    print("Main python start")
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str,
                         help="input file")
