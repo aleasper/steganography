@@ -84,7 +84,7 @@ if __name__ == '__main__':
                     break
 
             txt_symbol = ord(txt_symbol)  # from char to ASCII integer
-            txt_symbol <<= 8
+            # txt_symbol <<= 8
 
             for step in range(0, 16, ENCODING_BITS):
                 if step == 8 and not txt_symbol:
@@ -138,7 +138,8 @@ if __name__ == '__main__':
                 two_symbols <<= ENCODING_BITS
                 two_symbols |= sample
 
-            first_symbol = two_symbols >> 8
+            # first_symbol = two_symbols >> 8
+            first_symbol = two_symbols
 
             symbol = chr(first_symbol)
             if symbol == '~':
@@ -150,17 +151,17 @@ if __name__ == '__main__':
             if chr(first_symbol) == '\n' and len(os.linesep) == 2:
                 read += 1
 
-            if data_size - read > 0 and not end_symbol_read:
-                second_symbol = two_symbols & 0b0000000011111111
-                symbol = (chr(second_symbol))
-                if symbol == '~':
-                    end_symbol_read = True
-                else:
-                    decoded_text += symbol
-                read += 1
-
-                if chr(second_symbol) == '\n' and len(os.linesep) == 2:
-                    read += 1
+            # if data_size - read > 0 and not end_symbol_read:
+            #     second_symbol = two_symbols & 0b0000000011111111
+            #     symbol = (chr(second_symbol))
+            #     if symbol == '~':
+            #         end_symbol_read = True
+            #     else:
+            #         decoded_text += symbol
+            #     read += 1
+            #
+            #     if chr(second_symbol) == '\n' and len(os.linesep) == 2:
+            #         read += 1
 
         text.write(decoded_text)
         text.close()
